@@ -4,7 +4,8 @@ Main entry point for undockit CLI
 
 import sys
 from undockit.args import get_parser
-from undockit.install import install
+from undockit.install import install, resolve_target
+from undockit import deploy
 
 
 def main():
@@ -23,6 +24,14 @@ def main():
                 no_undockit=parsed.no_undockit,
             )
             print(f"Installed {parsed.image} as {tool_path}")
+
+            # Deploy undockit binary unless disabled
+            if not parsed.no_undockit:
+                target_dir = resolve_target(parsed.to, parsed.prefix)
+                deployed = deploy.ensure_binary(target_dir)
+                if deployed:
+                    print(f"Deployed undockit binary to {deployed}")
+
             return 0
         except (ValueError, PermissionError) as e:
             print(f"Error: {e}", file=sys.stderr)

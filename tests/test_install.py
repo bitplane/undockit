@@ -42,17 +42,17 @@ def test_make_dockerfile_custom_timeout():
     assert "--timeout=300" in result
 
 
-def test_make_dockerfile_no_gpu():
-    """Test dockerfile generation with GPU disabled"""
-    result = make_dockerfile("alpine", no_gpu=True)
-    assert "--no-gpu" in result
-    assert "--timeout=600" in result  # Still includes timeout
+def test_make_dockerfile_complex_image():
+    """Test dockerfile generation with complex image name"""
+    result = make_dockerfile("ghcr.io/org/repo:tag")
+    assert "FROM ghcr.io/org/repo:tag" in result
+    assert "--timeout=600" in result
 
 
-def test_make_dockerfile_all_options():
-    """Test dockerfile generation with all options"""
-    result = make_dockerfile("nvidia/cuda", timeout=900, no_gpu=True)
-    assert "#!/usr/bin/env -S undockit run --timeout=900 --no-gpu" in result
+def test_make_dockerfile_custom_timeout_long():
+    """Test dockerfile generation with long timeout"""
+    result = make_dockerfile("nvidia/cuda", timeout=900)
+    assert "#!/usr/bin/env -S undockit run --timeout=900" in result
     assert "FROM nvidia/cuda" in result
 
 
