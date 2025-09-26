@@ -1,49 +1,31 @@
 """
-Argument handling for undockit, including shebang argument parsing.
+Argument parsing for undockit CLI
 """
 
-import sys
-import shlex
+import argparse
+from pathlib import Path
+
+from . import __version__
 
 
-def get_args(args=sys.argv):
-    """
-    Handle shebang argument smooshing for 'run' subcommand.
+def get_parser():
+    """Create the argument parser for undockit"""
+    parser = argparse.ArgumentParser(
+        prog="undockit",
+        description="Run Dockerfiles as first-class CLI tools",
+    )
 
-    When a shebang line like:
-        #!/usr/bin/env undockit run --timeout=300 --no-gpu
+    parser.add_argument("--version", "-V", action="version", version=f"undockit {__version__}")
 
-    is executed, the kernel passes arguments as:
-        ["undockit", "run --timeout=300 --no-gpu", "script.df"]
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
 
-    This function detects and fixes that case by splitting the smooshed
-    arguments using shlex.split().
+    # install command
+    install = subparsers.add_parser("install", help="Install a Docker image as a CLI tool")
+    install.add_argument("image", help="Image name (repo/name:tag)")
+    install.add_argument("--name", help="Custom tool name (default: derived from image)")
+    install.add_argument("--to", choices=["env", "user", "sys"], default="user", help="Installation target")
+    install.add_argument("--prefix", type=Path, help="Override installation prefix")
+    install.add_argument("--timeout", type=int, default=600, help="Container timeout in seconds")
+    install.add_argument("--no-undockit", action="store_true", help="Skip deploying undockit binary to target")
 
-    Args:
-        args: List of arguments (defaults to sys.argv)
-
-    Returns:
-        List of properly split arguments
-
-    Examples:
-        >>> get_args(["undockit", "run --timeout=300", "script.df"])
-        ["undockit", "run", "--timeout=300", "script.df"]
-
-        >>> get_args(["undockit", "install", "some/image"])
-        ["undockit", "install", "some/image"]
-    """
-    # Make a copy to avoid mutating the original
-    result = args[:]
-
-    # Only handle the specific case: shebang with 'run ...' smooshed
-    if len(result) == 3 and result[1].startswith("run "):
-        try:
-            # Split "run --timeout=300 --no-gpu" -> ["run", "--timeout=300", "--no-gpu"]
-            split_args = shlex.split(result[1])
-            # Reconstruct: [script, "run", "--timeout=300", "--no-gpu", dockerfile]
-            result = [result[0]] + split_args + [result[2]]
-        except ValueError:
-            # shlex failed (e.g., unmatched quotes), leave as-is
-            pass
-
-    return result
+    return parser

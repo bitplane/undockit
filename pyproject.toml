@@ -12,6 +12,9 @@ dependencies = [
 
 ]
 
+[project.scripts]
+undockit = "undockit.main:main"
+
 [project.optional-dependencies]
 dev = [
     "pre-commit",
