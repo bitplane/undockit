@@ -58,6 +58,8 @@ def create_zipapp(
         main_module: Entry point in module:function format
         python_shebang: Shebang line for the zipapp
     """
+    from . import __version__
+
     # Create a temporary directory for the zipapp contents
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
@@ -65,6 +67,10 @@ def create_zipapp(
         # Copy the package to the temp directory
         pkg_name = source_dir.name
         shutil.copytree(source_dir, tmp_path / pkg_name)
+
+        # Overwrite __version__.py with hardcoded version
+        version_file = tmp_path / pkg_name / "__version__.py"
+        version_file.write_text(f'__version__ = "{__version__}"\n')
 
         # Create __main__.py
         main_content = f"""#!/usr/bin/env python3

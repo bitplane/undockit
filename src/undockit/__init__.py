@@ -1,6 +1,1 @@
-from importlib.metadata import version, PackageNotFoundError
-
-try:
-    __version__ = version("undockit")
-except PackageNotFoundError:
-    __version__ = "unknown"
+from .__version__ import __version__ as __version__
