@@ -6,6 +6,7 @@ import sys
 from undockit.args import get_parser
 from undockit.install import install, resolve_target
 from undockit import deploy
+from undockit.backend import get_backend
 
 
 def main():
@@ -36,6 +37,17 @@ def main():
         except (ValueError, PermissionError) as e:
             print(f"Error: {e}", file=sys.stderr)
             return 1
+
+    elif parsed.command == "build":
+        try:
+            backend = get_backend()
+            image_id = backend.build(parsed.dockerfile)
+            print(image_id)
+            return 0
+        except RuntimeError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
+
     else:
         # No command given, show help
         parser.print_help()
