@@ -7,7 +7,6 @@ import os
 import subprocess
 import sys
 import tempfile
-import glob
 from pathlib import Path
 
 from .base import Backend
@@ -54,18 +53,20 @@ class PodmanBackend(Backend):
         """Detect and return appropriate GPU device flags"""
         flags = []
 
-        # NVIDIA GPU support
-        nvidia_devices = glob.glob("/dev/nvidia*")
-        if nvidia_devices:
-            # Add all NVIDIA devices
-            for device in nvidia_devices:
-                flags.extend(["--device", device])
-
-        # Intel/AMD GPU support
-        if os.path.exists("/dev/dri"):
-            flags.extend(["--device", "/dev/dri"])
+        # NVIDIA GPU support via Container Toolkit CDI
+        if self._has_nvidia_cdi():
+            flags.extend(["--device", "nvidia.com/gpu=all"])
 
         return flags
+
+    def _has_nvidia_cdi(self) -> bool:
+        """Check if NVIDIA CDI devices are available"""
+        try:
+            # Check if CDI config exists
+            cdi_paths = ["/etc/cdi/nvidia.yaml", "/var/run/cdi/nvidia.yaml"]
+            return any(os.path.exists(path) for path in cdi_paths)
+        except Exception:
+            return False
 
     def build(self, dockerfile_path: Path) -> str:
         """Build image from dockerfile using podman build"""

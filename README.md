@@ -22,3 +22,8 @@ And run it:
 hello-world
 ```
 
+
+## nvidia setup
+
+sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+
