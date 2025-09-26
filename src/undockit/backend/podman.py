@@ -61,14 +61,36 @@ class PodmanBackend(Backend):
         return (entrypoint or []) + (cmd or [])
 
     def start(self, container_name: str, image_id: str) -> None:
-        """Start a warm container - placeholder"""
-        # TODO: Implement container starting
-        pass
+        """Start a warm container with host integration"""
+        cmd = [
+            "podman",
+            "run",
+            "-d",  # detached
+            "--name",
+            container_name,
+            "--userns=keep-id",  # run as current user
+            "--mount",
+            "type=bind,source=/,target=/host",  # mount host filesystem
+            "--entrypoint",
+            "",  # clear any existing entrypoint
+            image_id,
+            "tail",
+            "-f",
+            "/dev/null",  # simple keep-alive that should work everywhere
+        ]
+
+        # TODO: Add GPU devices back when we can detect availability
+        # "--device", "nvidia.com/gpu=all",  # NVIDIA GPU access
+        # "--device", "/dev/dri",  # Intel/AMD GPU access
+
+        subprocess.run(cmd, check=True)
 
     def stop(self, container_name: str) -> None:
-        """Stop a container - placeholder"""
-        # TODO: Implement container stopping
-        pass
+        """Stop and remove container"""
+        # Stop the container - fail hard if it doesn't exist
+        subprocess.run(["podman", "stop", container_name], check=True)
+        # Remove the container - fail hard if it doesn't exist
+        subprocess.run(["podman", "rm", container_name], check=True)
 
     def is_running(self, container_name: str) -> bool:
         """Check if container is running - placeholder"""
