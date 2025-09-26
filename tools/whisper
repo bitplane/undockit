@@ -1,0 +1,14 @@
+#!/usr/bin/env -S undockit run --timeout=600
+FROM ubuntu:24.04
+
+RUN apt-get update
+RUN apt-get install -y \
+    sudo \
+    python3-pip \
+    ffmpeg
+
+RUN pip install -U openai-whisper --break-system-packages
+
+WORKDIR /app
+
+CMD ["whisper"]

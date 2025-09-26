@@ -27,10 +27,10 @@ touch "$pidfile"
 cd "$workdir" || exit 1
 
 # Set up XDG directories to use host filesystem
-export HOME=/host/home/$(whoami)
-export XDG_CACHE_HOME=/host/home/$(whoami)/.cache
-export XDG_CONFIG_HOME=/host/home/$(whoami)/.config
-export XDG_DATA_HOME=/host/home/$(whoami)/.local/share
+export HOME=/host/home/{host_user}
+export XDG_CACHE_HOME=/host/home/{host_user}/.cache
+export XDG_CONFIG_HOME=/host/home/{host_user}/.config
+export XDG_DATA_HOME=/host/home/{host_user}/.local/share
 export MODEL_PATH="$XDG_DATA_HOME/models"
 mkdir -p "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$MODEL_PATH"
 
@@ -87,17 +87,21 @@ class PodmanBackend(Backend):
             # Run podman build with empty context
             cmd = ["podman", "build", "-f", str(dockerfile_path), empty_context]
 
-            try:
-                result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            except subprocess.CalledProcessError as e:
-                raise RuntimeError(f"Build failed: {e.stderr}") from e
+            # Build with real-time output
+            result = subprocess.run(cmd, check=False)
 
-            # Return the last line which should be the image ID
-            output_lines = result.stdout.strip().split("\n")
-            if output_lines:
-                return output_lines[-1].strip()
+            if result.returncode != 0:
+                raise RuntimeError(f"Build failed with exit code {result.returncode}")
 
-            raise RuntimeError("No output from build command")
+            # Get the most recently created image
+            get_image_cmd = ["podman", "images", "--format", "{{.ID}}", "--sort", "created"]
+            image_result = subprocess.run(get_image_cmd, capture_output=True, text=True, check=True)
+
+            image_ids = image_result.stdout.strip().split("\n")
+            if not image_ids or not image_ids[0]:
+                raise RuntimeError("Could not determine image ID")
+
+            return image_ids[0]  # Return the first (most recent) image ID
 
     def command(self, image_id: str) -> list[str]:
         """Extract default command from image using podman inspect"""
@@ -126,8 +130,13 @@ class PodmanBackend(Backend):
 
     def start(self, container_name: str, image_id: str, timeout: int = 600) -> None:
         """Start a warm container with host integration and timeout management"""
-        # Format the startup script with timeout value and container name
-        startup_script = STARTUP_SCRIPT.format(timeout=timeout, image_name=container_name)
+        # Get host username
+        import getpass
+
+        host_user = getpass.getuser()
+
+        # Format the startup script with timeout value, container name, and host user
+        startup_script = STARTUP_SCRIPT.format(timeout=timeout, image_name=container_name, host_user=host_user)
 
         cmd = [
             "podman",
