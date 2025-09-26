@@ -2,6 +2,7 @@
 Podman backend implementation
 """
 
+import json
 import subprocess
 import tempfile
 from pathlib import Path
@@ -35,9 +36,29 @@ class PodmanBackend(Backend):
             raise RuntimeError("No output from build command")
 
     def command(self, image_id: str) -> list[str]:
-        """Extract default command from image - placeholder"""
-        # TODO: Implement this by inspecting the image
-        return ["/bin/sh", "-c", "echo 'command() not implemented'"]
+        """Extract default command from image using podman inspect"""
+        # Get entrypoint - fail hard on any error
+        entrypoint_result = subprocess.run(
+            ["podman", "inspect", image_id, "--format", "{{json .Config.Entrypoint}}"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        # Get cmd - fail hard on any error
+        cmd_result = subprocess.run(
+            ["podman", "inspect", image_id, "--format", "{{json .Config.Cmd}}"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        # Parse JSON - fail hard on malformed JSON
+        entrypoint = json.loads(entrypoint_result.stdout.strip())
+        cmd = json.loads(cmd_result.stdout.strip())
+
+        # Combine per Docker semantics
+        return (entrypoint or []) + (cmd or [])
 
     def start(self, container_name: str, image_id: str) -> None:
         """Start a warm container - placeholder"""
