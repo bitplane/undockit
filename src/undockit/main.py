@@ -62,11 +62,10 @@ def main():
             if not backend.is_running(container_name):
                 backend.start(container_name, image_id, parsed.timeout)
 
-            # Get command to run
+            # Get command to run - always use entrypoint+cmd, append args
+            command = backend.command(image_id)
             if parsed.args:
-                command = parsed.args
-            else:
-                command = backend.command(image_id)
+                command.extend(parsed.args)
 
             # Execute command
             return backend.exec(container_name, command)

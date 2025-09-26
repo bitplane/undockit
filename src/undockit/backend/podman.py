@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import glob
 from pathlib import Path
 
 from .base import Backend
@@ -49,7 +50,22 @@ done
 
 
 class PodmanBackend(Backend):
-    """Backend implementation using Podman"""
+    def _get_gpu_flags(self) -> list[str]:
+        """Detect and return appropriate GPU device flags"""
+        flags = []
+
+        # NVIDIA GPU support
+        nvidia_devices = glob.glob("/dev/nvidia*")
+        if nvidia_devices:
+            # Add all NVIDIA devices
+            for device in nvidia_devices:
+                flags.extend(["--device", device])
+
+        # Intel/AMD GPU support
+        if os.path.exists("/dev/dri"):
+            flags.extend(["--device", "/dev/dri"])
+
+        return flags
 
     def build(self, dockerfile_path: Path) -> str:
         """Build image from dockerfile using podman build"""
@@ -115,14 +131,18 @@ class PodmanBackend(Backend):
             "type=bind,source=/,target=/host",  # mount host filesystem
             "--entrypoint",
             "/bin/sh",  # use shell to run our script
-            image_id,
-            "-c",
-            startup_script,
         ]
 
-        # TODO: Add GPU devices back when we can detect availability
-        # "--device", "nvidia.com/gpu=all",  # NVIDIA GPU access
-        # "--device", "/dev/dri",  # Intel/AMD GPU access
+        # Add GPU device flags
+        cmd.extend(self._get_gpu_flags())
+
+        cmd.extend(
+            [
+                image_id,
+                "-c",
+                startup_script,
+            ]
+        )
 
         subprocess.run(cmd, check=True)
 

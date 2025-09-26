@@ -30,9 +30,9 @@ def add_build_parser(subparsers):
 def add_run_parser(subparsers):
     """Add the run subcommand parser"""
     run = subparsers.add_parser("run", help="Run a command in a Docker container")
-    run.add_argument("dockerfile", type=Path, help="Path to Dockerfile to run")
-    run.add_argument("args", nargs="*", help="Arguments to pass to the image's default command")
     run.add_argument("--timeout", type=int, default=600, help="Container timeout in seconds")
+    run.add_argument("dockerfile", type=Path, help="Path to Dockerfile to run")
+    run.add_argument("args", nargs=argparse.REMAINDER, help="Arguments to pass to the image's default command")
     return run
 
 
