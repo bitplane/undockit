@@ -37,12 +37,13 @@ class Backend(ABC):
         pass
 
     @abstractmethod
-    def start(self, container_name: str, image_id: str) -> None:
+    def start(self, container_name: str, image_id: str, timeout: int = 600) -> None:
         """Start a warm container
 
         Args:
             container_name: Unique name for the container
             image_id: Image ID to run
+            timeout: Seconds of inactivity before container shuts down
         """
         pass
 
@@ -68,14 +69,26 @@ class Backend(ABC):
         pass
 
     @abstractmethod
-    def exec(self, container_name: str, script_path: str) -> int:
-        """Execute a script in the container
+    def exec(self, container_name: str, argv: list[str]) -> int:
+        """Execute a command in the container
 
         Args:
             container_name: Name of running container
-            script_path: Path to script file inside container
+            argv: Command and arguments to execute
 
         Returns:
-            Exit code from the executed script
+            Exit code from the executed command
+        """
+        pass
+
+    @abstractmethod
+    def name(self, image_id: str) -> str:
+        """Get container name for an image ID
+
+        Args:
+            image_id: Image ID returned from build()
+
+        Returns:
+            Container name to use for this image
         """
         pass

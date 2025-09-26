@@ -3,11 +3,49 @@ Podman backend implementation
 """
 
 import json
+import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
 from .base import Backend
+
+
+# Startup script template for containers
+STARTUP_SCRIPT = """#!/bin/sh
+# Create directories
+mkdir -p /tmp/undockit/pid /tmp/undockit/bin
+
+# Deploy exec script
+cat > /tmp/undockit/exec << 'EXEC_EOF'
+#!/bin/sh
+pidfile="/tmp/undockit/pid/$$"
+workdir="$1"
+shift
+touch "$pidfile"
+cd "$workdir" || exit 1
+"$@"
+exitcode=$?
+rm -f "$pidfile"
+exit $exitcode
+EXEC_EOF
+chmod +x /tmp/undockit/exec
+
+# Wait loop with timeout
+timeout_seconds={timeout}
+while true; do
+    count=$(ls /tmp/undockit/pid/ 2>/dev/null | wc -l)
+    if [ "$count" -eq 0 ]; then
+        mtime=$(stat -c %Y /tmp/undockit/pid/ 2>/dev/null || echo 0)
+        now=$(date +%s)
+        if [ $((now - mtime)) -gt $timeout_seconds ]; then
+            exit 0  # Timeout reached, shut down
+        fi
+    fi
+    sleep 30
+done
+"""
 
 
 class PodmanBackend(Backend):
@@ -60,23 +98,26 @@ class PodmanBackend(Backend):
         # Combine per Docker semantics
         return (entrypoint or []) + (cmd or [])
 
-    def start(self, container_name: str, image_id: str) -> None:
-        """Start a warm container with host integration"""
+    def start(self, container_name: str, image_id: str, timeout: int = 600) -> None:
+        """Start a warm container with host integration and timeout management"""
+        # Format the startup script with timeout value
+        startup_script = STARTUP_SCRIPT.format(timeout=timeout)
+
         cmd = [
             "podman",
             "run",
             "-d",  # detached
+            "--replace",  # replace existing container with same name
             "--name",
             container_name,
             "--userns=keep-id",  # run as current user
             "--mount",
             "type=bind,source=/,target=/host",  # mount host filesystem
             "--entrypoint",
-            "",  # clear any existing entrypoint
+            "/bin/sh",  # use shell to run our script
             image_id,
-            "tail",
-            "-f",
-            "/dev/null",  # simple keep-alive that should work everywhere
+            "-c",
+            startup_script,
         ]
 
         # TODO: Add GPU devices back when we can detect availability
@@ -108,7 +149,29 @@ class PodmanBackend(Backend):
             # If podman command fails, assume not running
             return False
 
-    def exec(self, container_name: str, script_path: str) -> int:
-        """Execute script in container - placeholder"""
-        # TODO: Implement container exec
-        return 0
+    def exec(self, container_name: str, argv: list[str]) -> int:
+        """Execute command in container with proper workdir"""
+        # Get current working directory and map to container path
+        host_cwd = os.getcwd()
+        container_workdir = f"/host{host_cwd}"
+
+        # Build exec command - call our exec script with workdir and user command
+        cmd = [
+            "podman",
+            "exec",
+            "-i",  # interactive for stdin
+        ]
+
+        # Add TTY flag if stdin is a terminal
+        if sys.stdin.isatty():
+            cmd.append("-t")
+
+        cmd.extend([container_name, "/tmp/undockit/exec", container_workdir] + argv)
+
+        # Run with full stdin/stdout/stderr passthrough
+        result = subprocess.run(cmd, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr, check=False)
+        return result.returncode
+
+    def name(self, image_id: str) -> str:
+        """Get container name for an image ID"""
+        return f"undockit-{os.getuid()}-{image_id[:12]}"

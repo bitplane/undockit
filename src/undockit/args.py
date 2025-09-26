@@ -27,6 +27,15 @@ def add_build_parser(subparsers):
     return build
 
 
+def add_run_parser(subparsers):
+    """Add the run subcommand parser"""
+    run = subparsers.add_parser("run", help="Run a command in a Docker container")
+    run.add_argument("dockerfile", type=Path, help="Path to Dockerfile to run")
+    run.add_argument("args", nargs="*", help="Arguments to pass to the image's default command")
+    run.add_argument("--timeout", type=int, default=600, help="Container timeout in seconds")
+    return run
+
+
 def get_parser():
     """Create the argument parser for undockit"""
     parser = argparse.ArgumentParser(
@@ -41,5 +50,6 @@ def get_parser():
     # Add subcommands
     add_install_parser(subparsers)
     add_build_parser(subparsers)
+    add_run_parser(subparsers)
 
     return parser

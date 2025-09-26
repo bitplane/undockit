@@ -48,6 +48,33 @@ def main():
             print(f"Error: {e}", file=sys.stderr)
             return 1
 
+    elif parsed.command == "run":
+        try:
+            backend = get_backend()
+
+            # Build the image
+            image_id = backend.build(parsed.dockerfile)
+
+            # Get container name
+            container_name = backend.name(image_id)
+
+            # Start container if not running
+            if not backend.is_running(container_name):
+                backend.start(container_name, image_id, parsed.timeout)
+
+            # Get command to run
+            if parsed.args:
+                command = parsed.args
+            else:
+                command = backend.command(image_id)
+
+            # Execute command
+            return backend.exec(container_name, command)
+
+        except RuntimeError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
+
     else:
         # No command given, show help
         parser.print_help()
