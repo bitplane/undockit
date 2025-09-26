@@ -14,30 +14,39 @@ from .base import Backend
 
 # Startup script template for containers
 STARTUP_SCRIPT = """#!/bin/sh
-# Create directories
-mkdir -p /tmp/undockit/pid /tmp/undockit/bin
+# Create directories with image-specific namespace
+mkdir -p /tmp/undockit/{image_name}/pid /tmp/undockit/{image_name}/bin
 
 # Deploy exec script
-cat > /tmp/undockit/exec << 'EXEC_EOF'
+cat > /tmp/undockit/{image_name}/exec << 'EXEC_EOF'
 #!/bin/sh
-pidfile="/tmp/undockit/pid/$$"
+pidfile="/tmp/undockit/{image_name}/pid/$$"
 workdir="$1"
 shift
 touch "$pidfile"
 cd "$workdir" || exit 1
+
+# Set up XDG directories to use host filesystem
+export HOME=/host/home/$(whoami)
+export XDG_CACHE_HOME=/host/home/$(whoami)/.cache
+export XDG_CONFIG_HOME=/host/home/$(whoami)/.config
+export XDG_DATA_HOME=/host/home/$(whoami)/.local/share
+export MODEL_PATH="$XDG_DATA_HOME/models"
+mkdir -p "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$MODEL_PATH"
+
 "$@"
 exitcode=$?
 rm -f "$pidfile"
 exit $exitcode
 EXEC_EOF
-chmod +x /tmp/undockit/exec
+chmod +x /tmp/undockit/{image_name}/exec
 
 # Wait loop with timeout
 timeout_seconds={timeout}
 while true; do
-    count=$(ls /tmp/undockit/pid/ 2>/dev/null | wc -l)
+    count=$(ls /tmp/undockit/{image_name}/pid/ 2>/dev/null | wc -l)
     if [ "$count" -eq 0 ]; then
-        mtime=$(stat -c %Y /tmp/undockit/pid/ 2>/dev/null || echo 0)
+        mtime=$(stat -c %Y /tmp/undockit/{image_name}/pid/ 2>/dev/null || echo 0)
         now=$(date +%s)
         if [ $((now - mtime)) -gt $timeout_seconds ]; then
             exit 0  # Timeout reached, shut down
@@ -117,8 +126,8 @@ class PodmanBackend(Backend):
 
     def start(self, container_name: str, image_id: str, timeout: int = 600) -> None:
         """Start a warm container with host integration and timeout management"""
-        # Format the startup script with timeout value
-        startup_script = STARTUP_SCRIPT.format(timeout=timeout)
+        # Format the startup script with timeout value and container name
+        startup_script = STARTUP_SCRIPT.format(timeout=timeout, image_name=container_name)
 
         cmd = [
             "podman",
@@ -130,6 +139,8 @@ class PodmanBackend(Backend):
             "--userns=keep-id",  # run as current user
             "--mount",
             "type=bind,source=/,target=/host",  # mount host filesystem
+            "--mount",
+            "type=bind,source=/tmp,target=/tmp",  # mount host /tmp
             "--entrypoint",
             "/bin/sh",  # use shell to run our script
         ]
@@ -187,7 +198,7 @@ class PodmanBackend(Backend):
         if sys.stdin.isatty():
             cmd.append("-t")
 
-        cmd.extend([container_name, "/tmp/undockit/exec", container_workdir] + argv)
+        cmd.extend([container_name, f"/tmp/undockit/{container_name}/exec", container_workdir] + argv)
 
         # Run with full stdin/stdout/stderr passthrough
         result = subprocess.run(cmd, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr, check=False)
