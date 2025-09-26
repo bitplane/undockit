@@ -93,9 +93,20 @@ class PodmanBackend(Backend):
         subprocess.run(["podman", "rm", container_name], check=True)
 
     def is_running(self, container_name: str) -> bool:
-        """Check if container is running - placeholder"""
-        # TODO: Implement container status check
-        return False
+        """Check if container is currently running"""
+        try:
+            result = subprocess.run(
+                ["podman", "ps", "--filter", f"name={container_name}", "--format", "{{.Names}}"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            # If container name appears in running containers, it's running
+            return container_name in result.stdout.strip().split("\n")
+        except subprocess.CalledProcessError:
+            # If podman command fails, assume not running
+            return False
 
     def exec(self, container_name: str, script_path: str) -> int:
         """Execute script in container - placeholder"""
