@@ -1,29 +1,42 @@
 # undockit
 
-Run docker containers like they're native commands.
+Run docker container endpoints like they're native commands.
 
-## usage
+## Setup
 
-Install from pypi:
+Deps:
+
+1. nvidia drivers
+2. nvidia container runtime
+3. `podman`
+
+Now create a CDI config:
+
+```bash
+sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+```
+
+Then install `undockit` from pypi. You could use pipx or uv, it'll work all
+the same:
 
 ```bash
 pip install undockit
 ```
 
-Then install an image
+## Usage
+
+To install a container as an executable, use the install command:
 
 ```bash
-undockit install hello-world
+undockit install dockerhub.io/bitplanenet/whisper
 ```
 
-And run it:
+This will add an executable Dockerfile with the undockit runtime as the shebang
+into your `~/.local/bin` dir or `$PREFIX`. You can override that location;
+see `--help` for details
+
+You can now run it:
 
 ```bash
-hello-world
+whisper --help
 ```
-
-
-## nvidia setup
-
-sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
-

@@ -18,9 +18,9 @@ STARTUP_SCRIPT = """#!/bin/sh
 mkdir -p /tmp/undockit/{image_name}/pid /tmp/undockit/{image_name}/bin
 
 # Deploy exec script
-cat > /tmp/undockit/{image_name}/exec << 'EXEC_EOF'
+cat > /tmp/undockit/{image_name}/exec << EXEC_EOF
 #!/bin/sh
-pidfile="/tmp/undockit/{image_name}/pid/$$"
+pidfile="/tmp/undockit/{image_name}/pid/\$$"
 workdir="$1"
 shift
 touch "$pidfile"
