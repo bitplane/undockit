@@ -6,7 +6,13 @@ authors = [
     { name = "Gareth Davidson", email = "gaz@bitplane.net" }
 ]
 readme = "README.md"
+license = {text = "Public Domain"}
 requires-python = ">=3.10"
+
+[project.urls]
+Homepage = "https://github.com/bitplane/undockit"
+Repository = "https://github.com/bitplane/undockit"
+"Bug Tracker" = "https://github.com/bitplane/undockit/issues"
 
 dependencies = [
 
@@ -24,8 +30,6 @@ dev = [
     "build",
     "twine",
     "ruff",
-    "mkdocs",
-    "mkdocs-material",
     "pydoc-markdown"
 ]
 
