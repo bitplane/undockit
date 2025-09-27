@@ -1,7 +1,7 @@
 [project]
 name = "undockit"
 description = "run dockerfiles as commands"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
     { name = "Gareth Davidson", email = "gaz@bitplane.net" }
 ]
@@ -13,10 +13,6 @@ requires-python = ">=3.10"
 Homepage = "https://github.com/bitplane/undockit"
 Repository = "https://github.com/bitplane/undockit"
 "Bug Tracker" = "https://github.com/bitplane/undockit/issues"
-
-dependencies = [
-
-]
 
 [project.scripts]
 undockit = "undockit.main:main"
