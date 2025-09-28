@@ -52,6 +52,13 @@ Modern neural OCR that's much better than tesseract. Extract text from images
 with `easyocr -l en image.jpg`. Supports 80+ languages and works great on
 photos, screenshots, documents, etc.
 
+### `realesrgan`
+
+AI image upscaler that can enhance resolution 2x, 3x, or 4x. Works great on
+photos, artwork, and low-res images. Use with
+`realesrgan -i input.jpg -o output.png -s 4` for 4x upscaling.
+Uses ncnn framework for fast CPU processing.
+
 ## Song separation
 
 Splitting music into different tracks. Can be used to remove vocals (like

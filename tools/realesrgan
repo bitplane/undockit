@@ -1,0 +1,25 @@
+#!/usr/bin/env -S undockit run --timeout=600
+
+# published as docker.io/bitplanenet/realesrgan-ncnn-vulkan
+
+FROM docker.io/ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    wget \
+    unzip \
+    libgomp1 \
+    libvulkan1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download pre-compiled Real-ESRGAN-ncnn-vulkan binary
+RUN cd /usr/local/bin && \
+    wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-ubuntu.zip && \
+    unzip realesrgan-ncnn-vulkan-20220424-ubuntu.zip && \
+    chmod +x realesrgan-ncnn-vulkan && \
+    rm realesrgan-ncnn-vulkan-20220424-ubuntu.zip
+
+WORKDIR /app
+
+ENTRYPOINT ["realesrgan-ncnn-vulkan"]
