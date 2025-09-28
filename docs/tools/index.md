@@ -9,13 +9,25 @@ Hub [here](https://hub.docker.com/u/bitplanenet). Either copy them into your
 undockit install docker.io/bitplanenet/whisper
 ```
 
-## Speech to Text
+## Speech Processing
 
-### `whisper`
+### `whisper` (Speech to Text)
 
 Whisper is OpenAI's transformer-based transcription model. Run
 `whisper some_file.whatever` and it'll create subtitles in a bunch of formats.
 It can also be used to translate as it transcribes. See `--help` for more info.
+
+### `mimic3` (Text to Speech)
+
+Mycroft's neural TTS with multiple voices. Generate speech with
+`mimic3 "Hello world" > output.wav`. Supports SSML markup and multiple
+languages.
+
+### `tts` (Text to Speech)
+
+Coqui TTS (formerly Mozilla TTS) with state-of-the-art models. Use with
+`tts --text "Hello" --out_path speech.wav`. Supports voice cloning with XTTS-v2
+model.
 
 ## Image processing
 
@@ -33,6 +45,12 @@ images with `yolo detect predict source=image.jpg`, or try segmentation with
 
 If you're into this sort of thing, Joseph Redmon taught a class on this, and
 it's [available on YouTube](https://www.youtube.com/playlist?list=PLjMXczUzEYcHvw5YYSU92WrY8IwhTuq7p).
+
+### `easyocr`
+
+Modern neural OCR that's much better than tesseract. Extract text from images
+with `easyocr -l en image.jpg`. Supports 80+ languages and works great on
+photos, screenshots, documents, etc.
 
 ## Song separation
 

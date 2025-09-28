@@ -1,0 +1,19 @@
+#!/usr/bin/env -S undockit run --timeout=600
+
+# published as docker.io/bitplanenet/mimic3
+
+FROM python:3.11-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libespeak-ng1 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install mycroft-mimic3-tts
+
+WORKDIR /app
+
+ENTRYPOINT ["mimic3"]

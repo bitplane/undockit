@@ -1,22 +1,25 @@
 #!/usr/bin/env -S undockit run --timeout=600
 
-# published as docker.io/bitplanenet/rembg
+# published as docker.io/bitplanenet/easyocr
 
-FROM python:3.11-slim
+FROM docker.io/nvidia/cuda:12.2.0-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
     libxrender-dev \
     libgomp1 \
+    libgl1-mesa-dev \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install rembg[cli] onnxruntime
+RUN pip install easyocr
 
 WORKDIR /app
 
-ENTRYPOINT ["rembg"]
+ENTRYPOINT ["easyocr"]

@@ -1,0 +1,18 @@
+#!/usr/bin/env -S undockit run --timeout=600
+
+# published as docker.io/bitplanenet/tts
+
+FROM docker.io/pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    libsndfile1 \
+    espeak-ng \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install TTS
+
+WORKDIR /app
+
+ENTRYPOINT ["tts"]
