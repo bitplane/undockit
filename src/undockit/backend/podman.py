@@ -12,32 +12,43 @@ from pathlib import Path
 from .base import Backend
 
 
+def get_empty_build_context() -> Path:
+    """Get persistent empty build context directory for caching"""
+    cache_home = os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")
+    empty_context = Path(cache_home) / "undockit-empty-context"
+    empty_context.mkdir(parents=True, exist_ok=True)
+    return empty_context
+
+
 # Startup script template for containers
 STARTUP_SCRIPT = """#!/bin/sh
 # Create directories with image-specific namespace
 mkdir -p /tmp/undockit/{image_name}/pid /tmp/undockit/{image_name}/bin
 
+# Update directory timestamp to mark container as active
+touch /tmp/undockit/{image_name}/pid/
+
 # Deploy exec script
 cat > /tmp/undockit/{image_name}/exec << EXEC_EOF
 #!/bin/sh
-pidfile="/tmp/undockit/{image_name}/pid/\$$"
-workdir="\$1"
+pidfile="/tmp/undockit/{image_name}/pid/\\$$"
+workdir="\\$1"
 shift
-touch "\$pidfile"
-cd "\$workdir" || exit 1
+touch "\\$pidfile"
+cd "\\$workdir" || exit 1
 
 # Set up XDG directories to use host filesystem
 export HOME=/host/home/{host_user}
 export XDG_CACHE_HOME=/host/home/{host_user}/.cache
 export XDG_CONFIG_HOME=/host/home/{host_user}/.config
 export XDG_DATA_HOME=/host/home/{host_user}/.local/share
-export MODEL_PATH="\$XDG_DATA_HOME/models"
-mkdir -p "\$XDG_CACHE_HOME" "\$XDG_CONFIG_HOME" "\$XDG_DATA_HOME" "\$MODEL_PATH"
+export MODEL_PATH="\\$XDG_DATA_HOME/models"
+mkdir -p "\\$XDG_CACHE_HOME" "\\$XDG_CONFIG_HOME" "\\$XDG_DATA_HOME" "\\$MODEL_PATH"
 
-"\$@"
-exitcode=\$?
-rm -f "\$pidfile"
-exit \$exitcode
+"\\$@"
+exitcode=\\$?
+rm -f "\\$pidfile"
+exit \\$exitcode
 EXEC_EOF
 chmod +x /tmp/undockit/{image_name}/exec
 
@@ -82,36 +93,41 @@ class PodmanBackend(Backend):
         if not dockerfile_path.exists():
             raise RuntimeError(f"Dockerfile not found: {dockerfile_path}")
 
-        # Use empty context - don't include random files from dockerfile directory
-        with tempfile.TemporaryDirectory() as empty_context:
-            if quiet:
-                # Quiet mode - just get the ID
-                cmd = ["podman", "build", "-q", "-f", str(dockerfile_path), empty_context]
-                result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        # Use persistent empty context for caching
+        empty_context = get_empty_build_context()
 
-                if result.returncode != 0:
-                    raise RuntimeError(f"Build failed with exit code {result.returncode}")
+        if quiet:
+            # Quiet mode - just get the ID
+            cmd = ["podman", "build", "-q", "-f", str(dockerfile_path), str(empty_context)]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
 
-                image_id = result.stdout.strip()
-            else:
-                # Verbose mode - show output and get ID from file
-                with tempfile.NamedTemporaryFile(delete=False) as iidfile:
-                    try:
-                        cmd = ["podman", "build", "--iidfile", iidfile.name, "-f", str(dockerfile_path), empty_context]
-                        result = subprocess.run(cmd, check=False)
+            if result.returncode != 0:
+                raise RuntimeError(f"Build failed with exit code {result.returncode}, stderr: {result.stderr}")
 
-                        if result.returncode != 0:
-                            raise RuntimeError(f"Build failed with exit code {result.returncode}")
-
-                        with open(iidfile.name, "r") as f:
-                            image_id = f.read().strip()
-                    finally:
-                        os.unlink(iidfile.name)
-
+            image_id = result.stdout.strip().removeprefix("sha256:")
             if not image_id:
-                raise RuntimeError("Could not determine image ID from build output")
+                raise RuntimeError(
+                    f"No image ID captured. stdout: '{result.stdout}', stderr: '{result.stderr}', returncode: {result.returncode}"
+                )
+        else:
+            # Verbose mode - show output and get ID from file
+            with tempfile.NamedTemporaryFile(delete=False) as iidfile:
+                try:
+                    cmd = ["podman", "build", "--iidfile", iidfile.name, "-f", str(dockerfile_path), str(empty_context)]
+                    result = subprocess.run(cmd, check=False)
 
-            return image_id
+                    if result.returncode != 0:
+                        raise RuntimeError(f"Build failed with exit code {result.returncode}")
+
+                    with open(iidfile.name, "r") as f:
+                        image_id = f.read().strip().removeprefix("sha256:")
+                finally:
+                    os.unlink(iidfile.name)
+
+        if not image_id:
+            raise RuntimeError("Could not determine image ID from build output")
+
+        return image_id
 
     def command(self, image_id: str) -> list[str]:
         """Extract default command from image using podman inspect"""

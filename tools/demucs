@@ -1,0 +1,23 @@
+#!/usr/bin/env -S undockit run --timeout=600
+
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    ffmpeg \
+    sox \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install PyTorch with CUDA support
+RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# Install Demucs
+RUN pip install demucs
+
+WORKDIR /app
+
+# Demucs CLI is installed as python -m demucs
+ENTRYPOINT ["python3", "-m", "demucs"]
