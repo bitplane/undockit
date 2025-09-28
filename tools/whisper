@@ -1,4 +1,7 @@
 #!/usr/bin/env -S undockit run --timeout=600
+
+# published as docker.io/bitplanenet/whisper
+
 FROM ubuntu:24.04
 
 RUN apt-get update

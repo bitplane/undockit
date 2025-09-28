@@ -21,23 +21,23 @@ mkdir -p /tmp/undockit/{image_name}/pid /tmp/undockit/{image_name}/bin
 cat > /tmp/undockit/{image_name}/exec << EXEC_EOF
 #!/bin/sh
 pidfile="/tmp/undockit/{image_name}/pid/\$$"
-workdir="$1"
+workdir="\$1"
 shift
-touch "$pidfile"
-cd "$workdir" || exit 1
+touch "\$pidfile"
+cd "\$workdir" || exit 1
 
 # Set up XDG directories to use host filesystem
 export HOME=/host/home/{host_user}
 export XDG_CACHE_HOME=/host/home/{host_user}/.cache
 export XDG_CONFIG_HOME=/host/home/{host_user}/.config
 export XDG_DATA_HOME=/host/home/{host_user}/.local/share
-export MODEL_PATH="$XDG_DATA_HOME/models"
-mkdir -p "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$MODEL_PATH"
+export MODEL_PATH="\$XDG_DATA_HOME/models"
+mkdir -p "\$XDG_CACHE_HOME" "\$XDG_CONFIG_HOME" "\$XDG_DATA_HOME" "\$MODEL_PATH"
 
-"$@"
-exitcode=$?
-rm -f "$pidfile"
-exit $exitcode
+"\$@"
+exitcode=\$?
+rm -f "\$pidfile"
+exit \$exitcode
 EXEC_EOF
 chmod +x /tmp/undockit/{image_name}/exec
 
@@ -77,31 +77,41 @@ class PodmanBackend(Backend):
         except Exception:
             return False
 
-    def build(self, dockerfile_path: Path) -> str:
+    def build(self, dockerfile_path: Path, quiet: bool = False) -> str:
         """Build image from dockerfile using podman build"""
         if not dockerfile_path.exists():
             raise RuntimeError(f"Dockerfile not found: {dockerfile_path}")
 
         # Use empty context - don't include random files from dockerfile directory
         with tempfile.TemporaryDirectory() as empty_context:
-            # Run podman build with empty context
-            cmd = ["podman", "build", "-f", str(dockerfile_path), empty_context]
+            if quiet:
+                # Quiet mode - just get the ID
+                cmd = ["podman", "build", "-q", "-f", str(dockerfile_path), empty_context]
+                result = subprocess.run(cmd, capture_output=True, text=True, check=False)
 
-            # Build with real-time output
-            result = subprocess.run(cmd, check=False)
+                if result.returncode != 0:
+                    raise RuntimeError(f"Build failed with exit code {result.returncode}")
 
-            if result.returncode != 0:
-                raise RuntimeError(f"Build failed with exit code {result.returncode}")
+                image_id = result.stdout.strip()
+            else:
+                # Verbose mode - show output and get ID from file
+                with tempfile.NamedTemporaryFile(delete=False) as iidfile:
+                    try:
+                        cmd = ["podman", "build", "--iidfile", iidfile.name, "-f", str(dockerfile_path), empty_context]
+                        result = subprocess.run(cmd, check=False)
 
-            # Get the most recently created image
-            get_image_cmd = ["podman", "images", "--format", "{{.ID}}", "--sort", "created"]
-            image_result = subprocess.run(get_image_cmd, capture_output=True, text=True, check=True)
+                        if result.returncode != 0:
+                            raise RuntimeError(f"Build failed with exit code {result.returncode}")
 
-            image_ids = image_result.stdout.strip().split("\n")
-            if not image_ids or not image_ids[0]:
-                raise RuntimeError("Could not determine image ID")
+                        with open(iidfile.name, "r") as f:
+                            image_id = f.read().strip()
+                    finally:
+                        os.unlink(iidfile.name)
 
-            return image_ids[0]  # Return the first (most recent) image ID
+            if not image_id:
+                raise RuntimeError("Could not determine image ID from build output")
+
+            return image_id
 
     def command(self, image_id: str) -> list[str]:
         """Extract default command from image using podman inspect"""

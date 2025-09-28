@@ -1,0 +1,16 @@
+#!/usr/bin/env -S undockit run --timeout=600
+
+FROM docker.io/tensorflow/tensorflow:2.12.0-gpu
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update
+RUN apt-get install -y \
+    ffmpeg \
+    libsndfile1
+
+RUN pip install spleeter
+
+WORKDIR /app
+
+ENTRYPOINT ["spleeter"]

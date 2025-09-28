@@ -10,11 +10,12 @@ class Backend(ABC):
     """Abstract base class for container runtime backends"""
 
     @abstractmethod
-    def build(self, dockerfile_path: Path) -> str:
+    def build(self, dockerfile_path: Path, quiet: bool = False) -> str:
         """Build image from dockerfile and return image ID
 
         Args:
             dockerfile_path: Path to the dockerfile to build
+            quiet: If True, suppress build output (default: False)
 
         Returns:
             Image ID/hash that can be used to reference the built image

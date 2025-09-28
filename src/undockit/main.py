@@ -41,8 +41,8 @@ def main():
     elif parsed.command == "build":
         try:
             backend = get_backend()
-            image_id = backend.build(parsed.dockerfile)
-            print(image_id)
+            image_id = backend.build(parsed.dockerfile, quiet=False)  # Show build output
+            # Don't print ID - podman already shows it when not quiet
             return 0
         except RuntimeError as e:
             print(f"Error: {e}", file=sys.stderr)
@@ -53,7 +53,7 @@ def main():
             backend = get_backend()
 
             # Build the image
-            image_id = backend.build(parsed.dockerfile)
+            image_id = backend.build(parsed.dockerfile, quiet=True)  # Hide output when running
 
             # Get container name
             container_name = backend.name(image_id)
