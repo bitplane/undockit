@@ -1,0 +1,22 @@
+#!/usr/bin/env -S undockit run --timeout=600
+
+# published as docker.io/bitplanenet/rembg
+
+FROM python:3.11-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install rembg[cli] onnxruntime
+
+WORKDIR /app
+
+ENTRYPOINT ["rembg"]

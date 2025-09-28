@@ -17,6 +17,14 @@ Whisper is OpenAI's speech to text model. Run `whisper some_file.whatever` and
 it'll create subtitles in a bunch of formats. It can also be used to translate
 as it transcribes. See `--help` for more info.
 
+## Image processing
+
+### `rembg`
+
+Remove backgrounds from images automatically using AI. Works great on photos
+of people, objects, etc. Just run `rembg i input.jpg output.png` and it'll
+create a PNG with transparent background.
+
 ## Song separation
 
 ### `spleeter`
